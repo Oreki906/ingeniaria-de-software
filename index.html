@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tablón - Sistema Objetos Perdidos</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-container" id="appSection">
+      <header class="topbar-container">
+        <div class="topbar">
+          <button id="menuToggle" class="burger-btn">☰</button>
+          <div style="display: flex; align-items: center; gap: 6px">
+            <span class="topbar-title">Tablón</span>
+            <span class="admin-badge">ADMIN</span>
+          </div>
+          <button id="adminBtn" class="topbar-action">Admin</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <aside class="sidebar" id="sidebar">
+          <h3>Categorías</h3>
+          <ul id="categoryList">
+            <li data-cat="Todos">⚡ Todos</li>
+            <li data-cat="Equipo">💻 Equipo electrónico</li>
+            <li data-cat="Termos">🍼 Termos</li>
+            <li data-cat="Material">📚 Material académico</li>
+            <li data-cat="Ropa/Accesorios">🧥 Ropa/Accesorios</li>
+            <li data-cat="Otros">❓ Otros</li>
+          </ul>
+          <button class="add-btn" id="openModalBtn">Reportar Objeto +</button>
+        </aside>
+
+        <main class="main-content">
+          <div id="posts" class="postsGrid"></div>
+        </main>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal-content">
+        <header class="modal-header">
+          <h3>NUEVA PUBLICACIÓN</h3>
+          <span class="badge perdido">PERDIDO</span>
+        </header>
+
+        <div class="modal-body">
+          <label>Categoría</label>
+          <select id="postCat">
+            <option value="Equipo electrónico">💻 Equipo electrónico</option>
+            <option value="Termos">🍼 Termos</option>
+            <option value="Material académico">📚 Material académico</option>
+            <option value="Ropa/Accesorios">🧥 Ropa/Accesorios</option>
+            <option value="Otros">❓ Otros</option>
+          </select>
+
+          <label>Descripción</label>
+          <textarea
+            id="postDesc"
+            placeholder="Ej: Termo beige con diseño floral, tapa de madera..."
+          ></textarea>
+
+          <label>¿Dónde se vio por última vez?</label>
+          <input
+            type="text"
+            id="postUbic"
+            placeholder="Ej: Biblioteca central"
+          />
+
+          <label class="file-label">Foto del objeto (Opcional)</label>
+          <input type="file" id="postFoto" accept="image/*" />
+          <img
+            id="fotoPreview"
+            src=""
+            alt="Preview"
+            style="
+              display: none;
+              width: 100%;
+              max-height: 180px;
+              object-fit: cover;
+              border-radius: 8px;
+              margin-top: 8px;
+            "
+          />
+        </div>
+
+        <div class="modal-actions">
+          <button id="savePostBtn" class="primary">Publicar</button>
+          <button id="closeModalBtn" class="secondary">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
