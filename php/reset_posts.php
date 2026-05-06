@@ -1,13 +1,17 @@
 <?php
-// ⚠️  ARCHIVO TEMPORAL - BORRA TODOS LOS POSTS
-// Abre este archivo UNA VEZ en el navegador: http://localhost/tu-proyecto/php/reset_posts.php
-// Luego ELIMÍNALO del servidor para evitar borrados accidentales.
+// ── reset_posts.php ───────────────────────────────────────────
+// ⚠️  ARCHIVO TEMPORAL — úsalo UNA VEZ y luego ELIMÍNALO.
+// Abre en el navegador: http://localhost/tu-proyecto/php/reset_posts.php
 
 include 'db.php';
 
-$conn->query("DELETE FROM posts");
-$conn->query("ALTER TABLE posts AUTO_INCREMENT = 1");
+$conn->query("SET FOREIGN_KEY_CHECKS = 0");
+$conn->query("TRUNCATE TABLE notificacion");
+$conn->query("TRUNCATE TABLE interaccion");
+$conn->query("TRUNCATE TABLE imagen");
+$conn->query("TRUNCATE TABLE reporte");
+$conn->query("SET FOREIGN_KEY_CHECKS = 1");
 
-echo "✅ Todos los registros borrados y el contador de IDs reiniciado.";
+echo "✅ Todos los reportes, imágenes, interacciones y notificaciones borrados. IDs reiniciados.";
 $conn->close();
 ?>
