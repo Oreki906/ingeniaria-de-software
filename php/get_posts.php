@@ -19,6 +19,7 @@ if ($soloMios) {
     $id = $_SESSION['ID'];
     $stmt = $conn->prepare(
         "SELECT r.ID_Reporte AS id,
+                r.ID_Estudiante,
                 r.tipoObjeto AS cat,
                 r.categoria,
                 r.descripcion,
@@ -38,6 +39,7 @@ if ($soloMios) {
     // Tablón público: todos menos resueltos
     $stmt = $conn->prepare(
         "SELECT r.ID_Reporte AS id,
+                r.ID_Estudiante,
                 r.tipoObjeto AS cat,
                 r.categoria,
                 r.descripcion,

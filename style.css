@@ -72,7 +72,8 @@ body {
   color: var(--text-mid);
 }
 
-.login-card input[type="text"] {
+.login-card input[type="text"],
+.login-card input[type="password"] {
   width: 100%;
   padding: 10px 14px;
   border: 1.5px solid #e0dbd3;
@@ -84,7 +85,15 @@ body {
   background: var(--off-white);
 }
 
-.login-card input[type="text"]:focus { border-color: var(--beige); }
+.login-card input[type="text"]:focus,
+.login-card input[type="password"]:focus { border-color: var(--beige); }
+
+#passwordWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+#passwordWrap.hidden { display: none !important; }
 
 .login-error {
   color: #c0392b;
@@ -106,6 +115,27 @@ body {
   transition: background 0.2s;
 }
 .btn-login:hover { background: var(--beige-dark); }
+
+/* ── BOTÓN TOGGLE ADMIN ────────────────────────────────────── */
+.btn-toggle-admin {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: var(--blue-mid);
+  border: 1.5px dashed var(--blue-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.85rem;
+  font-family: 'Nunito', sans-serif;
+  transition: all 0.2s;
+  margin-top: -4px;
+}
+.btn-toggle-admin:hover {
+  background: var(--blue-mid);
+  color: white;
+  border-style: solid;
+}
 
 /* ── TOPBAR ────────────────────────────────────────────────── */
 .topbar-container {
@@ -179,7 +209,7 @@ body {
 }
 body.admin-mode .admin-badge { display: inline-block; }
 
-/* ── NAV TABS (estudiante) ─────────────────────────────────── */
+/* ── NAV TABS ──────────────────────────────────────────────── */
 .nav-tabs {
   display: flex;
   gap: 4px;
@@ -202,6 +232,18 @@ body.admin-mode .admin-badge { display: inline-block; }
 }
 .nav-tab:hover,
 .nav-tab.active { background: var(--beige); }
+
+/* Tab admin: solo visible para admins */
+.admin-only { display: none; }
+body.admin-mode .admin-only { display: inline-block; }
+
+/* Tab admin activo con color diferente para distinguirlo */
+body.admin-mode .nav-tab.admin-only.active {
+  background: var(--blue-dark);
+}
+body.admin-mode .nav-tab.admin-only:hover {
+  background: var(--blue-dark);
+}
 
 /* ── LAYOUT ─────────────────────────────────────────────────── */
 .layout {

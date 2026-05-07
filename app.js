@@ -3,7 +3,7 @@ const app = {
   session:         null,
   posts:           [],
   currentCategory: "Todos",
-  currentView:     "tablon",   // tablon | misreportes | notificaciones
+  currentView:     "tablon",   // tablon | misreportes | notificaciones | admin
   chatReporteId:   null,
 };
 
@@ -26,16 +26,11 @@ function showApp(sessionData) {
 
   if (sessionData.tipo === "administrador") {
     document.body.classList.add("admin-mode");
-    $("navTabs").classList.add("hidden");
-    $("vistaEstudiante").classList.add("hidden");
-    $("vistaAdmin").classList.remove("hidden");
-    loadAdminPanel();
-  } else {
-    $("navTabs").classList.remove("hidden");
-    $("vistaEstudiante").classList.remove("hidden");
-    $("vistaAdmin").classList.add("hidden");
-    showView("tablon");
   }
+
+  $("navTabs").classList.remove("hidden");
+  $("vistaEstudiante").classList.remove("hidden");
+  showView("tablon");
 }
 
 function showLogin() {
@@ -44,20 +39,35 @@ function showLogin() {
   $("appSection").classList.add("hidden");
   $("loginScreen").classList.remove("hidden");
   $("loginInput").value = "";
+  $("passwordInput").value = "";
+  $("passwordWrap").classList.add("hidden");
+  $("toggleAdminBtn").textContent = "🔐 Ingresar como administrador";
+  $("loginSub").textContent = "Ingresa tu número de control";
   clearLoginError();
 }
 
-// ── Cambiar vistas (estudiante) ───────────────────────────────
+// ── Cambiar vistas ────────────────────────────────────────────
 function showView(view) {
   app.currentView = view;
 
-  // actualizar tabs
   document.querySelectorAll(".nav-tab").forEach(t => {
     t.classList.toggle("active", t.dataset.view === view);
   });
 
-  const sidebar       = $("sidebar");
-  const sectionTitle  = $("sectionTitle");
+  const sidebar      = $("sidebar");
+  const sectionTitle = $("sectionTitle");
+
+  if (view === "admin") {
+    // Mostrar panel admin, ocultar vista estudiante
+    $("vistaEstudiante").classList.add("hidden");
+    $("vistaAdmin").classList.remove("hidden");
+    loadAdminPanel();
+    return;
+  }
+
+  // Para cualquier otra vista: ocultar panel admin, mostrar vista estudiante
+  $("vistaAdmin").classList.add("hidden");
+  $("vistaEstudiante").classList.remove("hidden");
 
   if (view === "tablon") {
     sidebar.style.display = "";
@@ -125,21 +135,24 @@ function renderPosts(soloMios = false) {
         <small>📅 ${post.fecha}</small>
         ${post.noControl ? `<small>👤 ${post.noControl}</small>` : ""}
       </div>
-      <div class="card-actions">
-        ${!esMio ? `
-          <button class="btn-responder" onclick="openChat(${post.id}, '${post.cat}')">
-            💬 Responder
-          </button>` : ""}
-        ${esMio ? `
-          <button class="btn-resuelto" onclick="toggleStatus(${post.id})">
-            ${post.resuelto ? "⏪ Pendiente" : "✅ Resuelto"}
-          </button>` : ""}
-        ${(esMio || esAdmin) ? `
-          <button class="btn-eliminar" onclick="deletePost(${post.id})">
-            🗑 Eliminar
-          </button>` : ""}
-      </div>
-    `;
+        <div class="card-actions">
+    <button class="btn-responder" onclick="openChat(${post.id}, '${post.cat}')">
+      ${esMio ? "💬 Ver respuestas" : "💬 Responder"}
+    </button>
+
+    ${esMio ? `
+      <button class="btn-resuelto" onclick="toggleStatus(${post.id})">
+        ${post.resuelto ? "⏪ Pendiente" : "✅ Resuelto"}
+      </button>
+    ` : ""}
+
+    ${(esMio || esAdmin) ? `
+      <button class="btn-eliminar" onclick="deletePost(${post.id})">
+        🗑 Eliminar
+      </button>
+    ` : ""}
+  </div>
+      `;
     container.appendChild(div);
   });
 }
@@ -187,7 +200,7 @@ async function deletePost(id) {
   });
   const data = await res.json();
   if (data.status !== "deleted") alert("Error: " + (data.msg || "no se pudo eliminar"));
-  if (app.session.tipo === "administrador") loadAdminPanel();
+  if (app.currentView === "admin") loadAdminPanel();
   else loadPosts(app.currentView === "misreportes");
 }
 
@@ -335,7 +348,6 @@ async function doLogin(noControl) {
   });
   let data = await res.json();
 
-  // Si no existe, registrar automáticamente como estudiante
   if (res.status === 401) {
     const reg     = await fetch("php/register.php", {
       method:  "POST",
@@ -359,39 +371,65 @@ async function doLogin(noControl) {
 // ── INIT ──────────────────────────────────────────────────────
 window.onload = () => {
 
-  // Login
+  let adminMode = false;
+
+  $("toggleAdminBtn").onclick = () => {
+    adminMode = !adminMode;
+    $("passwordWrap").classList.toggle("hidden", !adminMode);
+    $("loginSub").textContent = adminMode
+      ? "Ingresa las credenciales de administrador"
+      : "Ingresa tu número de control";
+    $("toggleAdminBtn").textContent = adminMode
+      ? "👤 Ingresar como estudiante"
+      : "🔐 Ingresar como administrador";
+    clearLoginError();
+  };
+
   $("loginBtn").onclick = async () => {
     clearLoginError();
     const noControl = $("loginInput").value.trim();
     if (!noControl) { setLoginError("Ingresa tu número de control."); return; }
 
     try {
-      const data = await doLogin(noControl);
-      if (data.status === "ok") showApp(data);
-      else setLoginError(data.msg || "Error al iniciar sesión.");
+      if (adminMode) {
+        const password = $("passwordInput").value.trim();
+        if (!password) { setLoginError("Ingresa la contraseña de administrador."); return; }
+
+        const res  = await fetch("php/login.php", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ noControl, password, esAdmin: true }),
+        });
+        const data = await res.json();
+        if (data.status === "ok") showApp(data);
+        else setLoginError(data.msg || "Credenciales incorrectas.");
+      } else {
+        const data = await doLogin(noControl);
+        if (data.status === "ok") showApp(data);
+        else setLoginError(data.msg || "Error al iniciar sesión.");
+      }
     } catch { setLoginError("Error al conectar con el servidor."); }
   };
 
-  // Enter key en login
   $("loginInput").addEventListener("keydown", e => {
     if (e.key === "Enter") $("loginBtn").click();
   });
+  $("passwordInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") $("loginBtn").click();
+  });
 
-  // Logout
   $("logoutBtn").onclick = async () => {
     await fetch("php/logout.php", { method: "POST" });
+    adminMode = false;
     showLogin();
   };
 
-  // Nav tabs
   document.querySelectorAll(".nav-tab").forEach(tab => {
     tab.onclick = () => showView(tab.dataset.view);
   });
 
-  // Hamburguesa
   $("menuToggle").onclick = () => $("sidebar").classList.toggle("collapsed");
 
-  // Categorías
   document.querySelectorAll("#categoryList li").forEach(li => {
     li.onclick = () => {
       document.querySelectorAll("#categoryList li").forEach(l => l.classList.remove("active"));
@@ -401,12 +439,10 @@ window.onload = () => {
     };
   });
 
-  // Modal nuevo reporte
   $("openModalBtn").onclick  = () => $("modalOverlay").classList.add("active");
   $("closeModalBtn").onclick = () => $("modalOverlay").classList.remove("active");
   $("savePostBtn").onclick   = () => createPost();
 
-  // Preview foto
   $("postFoto").addEventListener("change", function () {
     const preview = $("fotoPreview");
     if (this.files && this.files[0]) {
@@ -416,7 +452,6 @@ window.onload = () => {
     } else { preview.style.display = "none"; }
   });
 
-  // Chat
   $("closeChatBtn").onclick = () => $("chatOverlay").classList.remove("active");
   $("sendChatBtn").onclick  = () => sendChat();
   $("chatInput").addEventListener("keydown", e => { if (e.key === "Enter") sendChat(); });
