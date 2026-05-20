@@ -1,6 +1,5 @@
 <?php
 // ── get_chat.php ──────────────────────────────────────────────
-// GET ?reporte=ID → devuelve los mensajes de chat de ese reporte
 header("Content-Type: application/json");
 session_start();
 include 'db.php';
@@ -22,11 +21,12 @@ $ID_Reporte = (int)$_GET['reporte'];
 $stmt = $conn->prepare(
     "SELECT i.idInteraccion AS id,
             i.ID_Estudiante,
-            e.noControl,
+            CASE WHEN i.ID_Estudiante IS NULL THEN 1 ELSE 0 END AS es_admin,
+            COALESCE(e.noControl, '🛡 Administrador') AS noControl,
             i.mensaje,
             i.fecha
      FROM interaccion i
-     INNER JOIN estudiante e ON i.ID_Estudiante = e.ID_Estudiante
+     LEFT JOIN estudiante e ON i.ID_Estudiante = e.ID_Estudiante
      WHERE i.ID_Reporte = ?
      ORDER BY i.fecha ASC"
 );
@@ -36,11 +36,11 @@ $result = $stmt->get_result();
 
 $mensajes = [];
 while ($row = $result->fetch_assoc()) {
+    $row['es_admin'] = (bool)$row['es_admin'];
     $mensajes[] = $row;
 }
 
 echo json_encode($mensajes);
-
 $stmt->close();
 $conn->close();
 ?>

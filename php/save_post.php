@@ -1,16 +1,39 @@
 <?php
 // ── save_post.php ─────────────────────────────────────────────
-// POST { cat, categoria, descripcion, ubic, foto?, fecha? }
-// Requiere sesión de estudiante activa
 header("Content-Type: application/json");
 session_start();
 include 'db.php';
 
-// Validar sesión
-if (empty($_SESSION['ID']) || $_SESSION['tipo'] !== 'estudiante') {
+if (empty($_SESSION['ID'])) {
     http_response_code(401);
     echo json_encode(["status" => "error", "msg" => "Debes iniciar sesión para publicar"]);
     exit;
+}
+
+// Obtener el ID_Estudiante correcto según el tipo de usuario
+if ($_SESSION['tipo'] === 'administrador') {
+    // El admin publica a nombre del primer estudiante registrado, o usamos un ID especial.
+    // Mejor: obtenemos un ID_Estudiante válido del propio admin si existe en la tabla,
+    // o lo marcamos como el estudiante con ID 1 (admin puede publicar igual que cualquiera).
+    // Para mantener compatibilidad con la FK, buscamos si el admin tiene fila en estudiante.
+    $chkAdmin = $conn->prepare("SELECT ID_Estudiante FROM estudiante WHERE noControl = ?");
+    $chkAdmin->bind_param("s", $_SESSION['noControl']);
+    $chkAdmin->execute();
+    $rowAdmin = $chkAdmin->get_result()->fetch_assoc();
+    $chkAdmin->close();
+
+    if (!$rowAdmin) {
+        // Insertar al admin como estudiante para cumplir la FK
+        $insAdmin = $conn->prepare("INSERT INTO estudiante (noControl) VALUES (?)");
+        $insAdmin->bind_param("s", $_SESSION['noControl']);
+        $insAdmin->execute();
+        $_SESSION['ID_Estudiante_FK'] = $conn->insert_id;
+        $insAdmin->close();
+    } else {
+        $_SESSION['ID_Estudiante_FK'] = $rowAdmin['ID_Estudiante'];
+    }
+} else {
+    $_SESSION['ID_Estudiante_FK'] = $_SESSION['ID'];
 }
 
 $raw  = file_get_contents("php://input");
@@ -22,14 +45,13 @@ if (!$data) {
     exit;
 }
 
-// Campos obligatorios
 if (empty($data->descripcion) || empty($data->ubic) || empty($data->cat)) {
     http_response_code(400);
-    echo json_encode(["status" => "error", "msg" => "Faltan campos obligatorios (cat, descripcion, ubic)"]);
+    echo json_encode(["status" => "error", "msg" => "Faltan campos obligatorios"]);
     exit;
 }
 
-$ID_Estudiante  = $_SESSION['ID'];
+$ID_Estudiante  = $_SESSION['ID_Estudiante_FK'];
 $tipoObjeto     = $data->cat;
 $categoria      = $data->categoria   ?? $data->cat;
 $descripcion    = $data->descripcion;
@@ -38,7 +60,12 @@ $foto           = $data->foto        ?? "";
 $fecha          = $data->fecha       ?? date("Y-m-d");
 $estado         = "Perdido";
 
-// Insertar reporte
+if (!empty($foto) && strlen($foto) > 5 * 1024 * 1024) {
+    http_response_code(400);
+    echo json_encode(["status" => "error", "msg" => "La imagen es demasiado grande (máx 4 MB)"]);
+    exit;
+}
+
 $stmt = $conn->prepare(
     "INSERT INTO reporte (ID_Estudiante, tipoObjeto, categoria, descripcion, ultimaUbicacion, fecha, estado)
      VALUES (?, ?, ?, ?, ?, ?, ?)"
@@ -55,26 +82,33 @@ if (!$stmt->execute()) {
 $ID_Reporte = $conn->insert_id;
 $stmt->close();
 
-// Guardar imagen si viene
 if (!empty($foto)) {
     $stmtImg = $conn->prepare("INSERT INTO imagen (ID_Reporte, url) VALUES (?, ?)");
     $stmtImg->bind_param("is", $ID_Reporte, $foto);
-    $stmtImg->execute();
+    if (!$stmtImg->execute()) {
+        error_log("Error guardando imagen para reporte $ID_Reporte: " . $stmtImg->error);
+    }
     $stmtImg->close();
 }
 
-// Crear notificación automática para el administrador (ID 1 por defecto)
-$msg     = "Nueva publicación registrada: $tipoObjeto";
+// ── Notificar a TODOS los estudiantes ──────────────────────────
+// El admin ve TODAS las notificaciones filtrando por ID_Administrador=1
+// No se necesita fila extra para el admin → sin NULL
+$msg     = "📢 Nueva publicación: $tipoObjeto";
 $adminID = 1;
+
+$todos = $conn->query("SELECT ID_Estudiante FROM estudiante");
 $stmtN = $conn->prepare(
     "INSERT INTO notificacion (ID_Estudiante, ID_Administrador, ID_Reporte, mensaje)
      VALUES (?, ?, ?, ?)"
 );
-$stmtN->bind_param("iiis", $ID_Estudiante, $adminID, $ID_Reporte, $msg);
-$stmtN->execute();
+while ($est = $todos->fetch_assoc()) {
+    $estID = $est['ID_Estudiante'];
+    $stmtN->bind_param("iiis", $estID, $adminID, $ID_Reporte, $msg);
+    $stmtN->execute();
+}
 $stmtN->close();
 
 echo json_encode(["status" => "ok", "id" => $ID_Reporte]);
-
 $conn->close();
 ?>

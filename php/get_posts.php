@@ -1,7 +1,7 @@
 <?php
 // ── get_posts.php ────────────────────────────────────────────
-// GET  → devuelve todos los reportes activos (tablón público)
-// GET ?mis=1  → devuelve solo los reportes del estudiante en sesión
+// GET  → devuelve todos los reportes activos (tablón público, excluye Resuelto)
+// GET ?mis=1  → devuelve solo los reportes del estudiante en sesión (todos los estados)
 header("Content-Type: application/json");
 session_start();
 include 'db.php';
@@ -9,8 +9,8 @@ include 'db.php';
 $soloMios = isset($_GET['mis']) && $_GET['mis'] == 1;
 
 if ($soloMios) {
-    // Validar sesión
-    if (empty($_SESSION['ID']) || $_SESSION['tipo'] !== 'estudiante') {
+    // Validar sesión — acepta tanto estudiante como administrador
+    if (empty($_SESSION['ID'])) {
         http_response_code(401);
         echo json_encode(["status" => "error", "msg" => "No autenticado"]);
         exit;
@@ -26,8 +26,7 @@ if ($soloMios) {
                 r.ultimaUbicacion AS ubic,
                 r.fecha,
                 r.estado,
-                COALESCE(i.url, '') AS foto,
-                (r.estado = 'Resuelto') AS resuelto
+                COALESCE(i.url, '') AS foto
          FROM reporte r
          LEFT JOIN imagen i ON i.ID_Reporte = r.ID_Reporte
          WHERE r.ID_Estudiante = ?
@@ -36,7 +35,7 @@ if ($soloMios) {
     );
     $stmt->bind_param("i", $id);
 } else {
-    // Tablón público: todos menos resueltos
+    // Tablón público: todos menos Resuelto
     $stmt = $conn->prepare(
         "SELECT r.ID_Reporte AS id,
                 r.ID_Estudiante,
@@ -46,8 +45,7 @@ if ($soloMios) {
                 r.ultimaUbicacion AS ubic,
                 r.fecha,
                 r.estado,
-                COALESCE(i.url, '') AS foto,
-                (r.estado = 'Resuelto') AS resuelto
+                COALESCE(i.url, '') AS foto
          FROM reporte r
          LEFT JOIN imagen i ON i.ID_Reporte = r.ID_Reporte
          WHERE r.estado != 'Resuelto'
@@ -67,7 +65,6 @@ if (!$result) {
 
 $posts = [];
 while ($row = $result->fetch_assoc()) {
-    $row['resuelto'] = (bool)$row['resuelto'];
     $posts[] = $row;
 }
 

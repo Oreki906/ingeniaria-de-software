@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Objetos Perdidos - ITE</title>
+  <link rel="icon" type="image/png" href="favicon.png" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,7 +12,10 @@
   <!-- ── LOGIN ──────────────────────────────────────────────── -->
   <div class="login-screen" id="loginScreen">
     <div class="login-card">
-      <h2>Acceso al Sistema</h2>
+      <div class="login-logo">
+        <img src="favicon.png" alt="Logo ITE Objetos Perdidos" class="login-logo-img" />
+      </div>
+      <h2>Sistema Objetos Perdidos ITE</h2>
       <p class="login-sub" id="loginSub">Ingresa tu número de control</p>
 
       <label for="loginInput">Número de control</label>
@@ -36,7 +40,7 @@
       <div class="topbar">
         <button id="menuToggle" class="burger-btn">☰</button>
         <div style="display:flex;align-items:center;gap:6px;">
-          <span class="topbar-title">Sistema Objetos Perdidos</span>
+          <span class="topbar-title">Objetos Perdidos</span>
           <span class="admin-badge">ADMIN</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -67,10 +71,16 @@
             <li data-cat="Ropa/Accesorios">🧥 Ropa/Accesorios</li>
             <li data-cat="Otros">❓ Otros</li>
           </ul>
-          <button class="add-btn" id="openModalBtn">Reportar Objeto +</button>
+          <button class="add-btn" id="openModalBtn">+ Reportar Objeto</button>
         </aside>
         <main class="main-content">
-          <p class="section-title" id="sectionTitle">Tablón de Objetos Perdidos</p>
+          <div class="content-header">
+            <p class="section-title" id="sectionTitle">Tablón de Objetos Perdidos</p>
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchInput" class="search-input" placeholder="Buscar por descripción, categoría o ubicación..." />
+            </div>
+          </div>
           <div id="posts" class="postsGrid"></div>
         </main>
       </div>
@@ -78,24 +88,26 @@
 
     <!-- ── VISTA ADMIN ───────────────────────────────────────── -->
     <div id="vistaAdmin" class="hidden">
-      <div style="max-width:1200px;margin:0 auto;padding:1rem;">
-        <p class="section-title">Panel Administrador</p>
+      <div style="max-width:1300px;margin:0 auto;padding:1rem;">
         <div class="admin-panel">
           <div class="admin-panel-title">Gestión de Reportes</div>
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>Categoría</th>
-                <th>Descripción</th>
-                <th>Estudiante</th>
-                <th>Ubicación</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody id="adminTableBody"></tbody>
-          </table>
+          <div style="overflow-x:auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Foto</th>
+                  <th>Categoría</th>
+                  <th>Descripción</th>
+                  <th>Estudiante</th>
+                  <th>Ubicación</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="adminTableBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -126,6 +138,7 @@
         <input type="file" id="postFoto" accept="image/*" />
         <img id="fotoPreview" src="" alt="Preview"
           style="display:none;width:100%;max-height:160px;object-fit:cover;border-radius:8px;margin-top:6px;" />
+        <p style="font-size:0.75rem;color:#aaa;margin-top:-6px;">La imagen se comprimirá automáticamente.</p>
       </div>
       <div class="modal-actions">
         <button id="savePostBtn" class="primary">Publicar</button>
@@ -146,6 +159,16 @@
         <input type="text" id="chatInput" placeholder="Mensaje..." />
         <button id="sendChatBtn">Enviar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- ── MODAL VER FOTO ADMIN ──────────────────────────────── -->
+  <div class="modal-overlay" id="fotoAdminOverlay">
+    <div style="position:relative;max-width:90vw;max-height:90vh;">
+      <img id="fotoAdminImg" src="" alt="Foto del objeto"
+        style="max-width:90vw;max-height:85vh;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.5);" />
+      <button id="closeFotoAdminBtn"
+        style="position:absolute;top:-14px;right:-14px;background:#e74c3c;color:white;border:none;border-radius:50%;width:32px;height:32px;font-size:1rem;cursor:pointer;font-weight:800;">✕</button>
     </div>
   </div>
 

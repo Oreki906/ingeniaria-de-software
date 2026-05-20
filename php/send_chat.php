@@ -1,34 +1,41 @@
 <?php
 // ── send_chat.php ─────────────────────────────────────────────
-// POST { reporte: int, mensaje: string }
-// Guarda el mensaje y notifica al dueño del reporte
+// REQUISITO BD para chat del admin: ALTER TABLE interaccion MODIFY ID_Estudiante INT NULL;
 header("Content-Type: application/json");
 session_start();
 include 'db.php';
 
-if (empty($_SESSION['ID']) || $_SESSION['tipo'] !== 'estudiante') {
+if (empty($_SESSION['ID'])) {
     http_response_code(401);
     echo json_encode(["status" => "error", "msg" => "No autenticado"]);
     exit;
 }
 
 $data = json_decode(file_get_contents("php://input"), true);
-
 if (empty($data['reporte']) || empty($data['mensaje'])) {
     http_response_code(400);
-    echo json_encode(["status" => "error", "msg" => "Faltan campos: reporte, mensaje"]);
+    echo json_encode(["status" => "error", "msg" => "Faltan campos"]);
     exit;
 }
 
-$ID_Reporte    = (int)$data['reporte'];
-$ID_Estudiante = $_SESSION['ID'];
-$mensaje       = trim($data['mensaje']);
+$ID_Reporte = (int)$data['reporte'];
+$ID_Sesion  = $_SESSION['ID'];
+$tipo       = $_SESSION['tipo'];
+$mensaje    = trim($data['mensaje']);
+$adminID    = 1;
 
-// Guardar interacción
-$stmt = $conn->prepare(
-    "INSERT INTO interaccion (ID_Reporte, ID_Estudiante, mensaje) VALUES (?, ?, ?)"
-);
-$stmt->bind_param("iis", $ID_Reporte, $ID_Estudiante, $mensaje);
+// ── Guardar mensaje ──────────────────────────────────────────
+if ($tipo === 'administrador') {
+    $stmt = $conn->prepare(
+        "INSERT INTO interaccion (ID_Reporte, ID_Estudiante, mensaje) VALUES (?, NULL, ?)"
+    );
+    $stmt->bind_param("is", $ID_Reporte, $mensaje);
+} else {
+    $stmt = $conn->prepare(
+        "INSERT INTO interaccion (ID_Reporte, ID_Estudiante, mensaje) VALUES (?, ?, ?)"
+    );
+    $stmt->bind_param("iis", $ID_Reporte, $ID_Sesion, $mensaje);
+}
 
 if (!$stmt->execute()) {
     http_response_code(500);
@@ -38,28 +45,25 @@ if (!$stmt->execute()) {
 }
 $stmt->close();
 
-// Notificar al dueño del reporte (si no es el mismo que escribe)
-$owner = $conn->prepare("SELECT ID_Estudiante FROM reporte WHERE ID_Reporte = ?");
-$owner->bind_param("i", $ID_Reporte);
-$owner->execute();
-$ownerRow = $owner->get_result()->fetch_assoc();
-$owner->close();
+// ── Notificar a TODOS los estudiantes (menos quien escribió) ──
+// El admin ve todo por ID_Administrador=1, no necesita fila propia → sin NULL
+$msgNoti = ($tipo === 'administrador')
+    ? "🛡 El administrador respondió en el reporte #$ID_Reporte"
+    : "💬 Nueva respuesta en el reporte #$ID_Reporte";
 
-if ($ownerRow && $ownerRow['ID_Estudiante'] != $ID_Estudiante) {
-    $dueno   = $ownerRow['ID_Estudiante'];
-    $adminID = 1;
-    $msgNoti = "Respondieron a tu publicación #$ID_Reporte";
-
-    $stmtN = $conn->prepare(
-        "INSERT INTO notificacion (ID_Estudiante, ID_Administrador, ID_Reporte, mensaje)
-         VALUES (?, ?, ?, ?)"
-    );
-    $stmtN->bind_param("iiis", $dueno, $adminID, $ID_Reporte, $msgNoti);
+$todos = $conn->query("SELECT ID_Estudiante FROM estudiante");
+$stmtN = $conn->prepare(
+    "INSERT INTO notificacion (ID_Estudiante, ID_Administrador, ID_Reporte, mensaje)
+     VALUES (?, ?, ?, ?)"
+);
+while ($est = $todos->fetch_assoc()) {
+    $estID = $est['ID_Estudiante'];
+    if ($tipo === 'estudiante' && $estID == $ID_Sesion) continue;
+    $stmtN->bind_param("iiis", $estID, $adminID, $ID_Reporte, $msgNoti);
     $stmtN->execute();
-    $stmtN->close();
 }
+$stmtN->close();
 
 echo json_encode(["status" => "ok"]);
-
 $conn->close();
 ?>
